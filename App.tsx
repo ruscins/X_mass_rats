@@ -4,12 +4,13 @@ import { GamePhase } from './components/GamePhase';
 import { AppMode, Assignment } from './types';
 import { STORAGE_KEY_ASSIGNMENTS, STORAGE_KEY_FAMILIES } from './constants';
 import { soundEffects } from './utils/sounds';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Music } from 'lucide-react';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>('setup');
   const [isSharedList, setIsSharedList] = useState(false); // Track if list came from shared link
   const [isMuted, setIsMuted] = useState(false);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   
   // State initialization with localStorage check
   const [families, setFamilies] = useState<string[]>(() => {
@@ -84,6 +85,27 @@ const App: React.FC = () => {
       setMode('game');
     }
   }, []);
+  
+  // Start background music on first user interaction
+  useEffect(() => {
+    const startMusic = () => {
+      if (!isMusicPlaying && !isMuted) {
+        soundEffects.startBackgroundMusic();
+        setIsMusicPlaying(true);
+      }
+      // Remove listeners after first interaction
+      document.removeEventListener('click', startMusic);
+      document.removeEventListener('keydown', startMusic);
+    };
+
+    document.addEventListener('click', startMusic);
+    document.addEventListener('keydown', startMusic);
+
+    return () => {
+      document.removeEventListener('click', startMusic);
+      document.removeEventListener('keydown', startMusic);
+    };
+  }, [isMusicPlaying, isMuted]);
 
   // Persistence effects
   useEffect(() => {
@@ -135,11 +157,21 @@ const App: React.FC = () => {
         onClick={() => {
           const muted = soundEffects.toggleMute();
           setIsMuted(muted);
+          setIsMusicPlaying(!muted);
         }}
-        className="fixed top-4 right-4 z-50 bg-white/20 backdrop-blur-sm p-3 rounded-full hover:bg-white/30 transition-all hover:scale-110 active:scale-95"
+        className="fixed top-4 right-4 z-50 bg-white/20 backdrop-blur-sm p-3 rounded-full hover:bg-white/30 transition-all hover:scale-110 active:scale-95 shadow-lg"
         title={isMuted ? "Ieslēgt skaņu" : "Izslēgt skaņu"}
       >
-        {isMuted ? <VolumeX size={24} className="text-white" /> : <Volume2 size={24} className="text-white" />}
+        {isMuted ? (
+          <VolumeX size={24} className="text-white" />
+        ) : (
+          <div className="relative">
+            <Volume2 size={24} className="text-white" />
+            {isMusicPlaying && (
+              <Music size={12} className="text-xmas-gold absolute -top-1 -right-1 animate-pulse" />
+            )}
+          </div>
+        )}
       </button>
 
       <header className="text-center py-6 mb-4">
