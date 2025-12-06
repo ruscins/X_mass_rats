@@ -49,6 +49,12 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
       alert("Neizdevās izveidot saiti. Mēģiniet vēlreiz.");
     }
   };
+  
+  const clearAllFamilies = () => {
+    if (families.length > 0 && window.confirm("Vai tiešām vēlaties izdzēst visus dalībniekus?")) {
+      setFamilies([]);
+    }
+  };
 
   return (
     <div className="max-w-md mx-auto w-full p-4 bg-white/10 backdrop-blur-md rounded-2xl shadow-xl border border-white/20">
@@ -106,6 +112,16 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
             className="w-full flex items-center justify-center gap-2 text-sm bg-green-600 !text-white hover:!bg-green-700 !border-none"
           >
             <Share2 size={16} /> Kopīgot ratu WhatsApp
+          </Button>
+        )}
+        
+        {families.length > 0 && (
+          <Button 
+            onClick={clearAllFamilies}
+            variant="secondary"
+            className="w-full flex items-center justify-center gap-2 text-sm bg-red-600 !text-white hover:!bg-red-700 !border-none"
+          >
+            <Trash2 size={16} /> Izdzēst visus dalībniekus
           </Button>
         )}
 
