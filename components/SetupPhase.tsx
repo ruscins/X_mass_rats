@@ -6,9 +6,10 @@ interface SetupPhaseProps {
   families: string[];
   setFamilies: (families: string[]) => void;
   onStartGame: () => void;
+  originalFamilies: string[];
 }
 
-export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, onStartGame }) => {
+export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, onStartGame, originalFamilies }) => {
   const [inputValue, setInputValue] = useState('');
 
   const addFamily = (e?: React.FormEvent) => {

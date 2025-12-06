@@ -12,6 +12,7 @@ interface GamePhaseProps {
   assignments: Assignment[];
   setAssignments: (a: Assignment[]) => void;
   onReset: () => void;
+  originalFamilies: string[];
 }
 
 export const GamePhase: React.FC<GamePhaseProps> = ({ 
@@ -19,7 +20,8 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
   setFamilies,
   assignments, 
   setAssignments,
-  onReset
+  onReset,
+  originalFamilies
 }) => {
   const [currentUser, setCurrentUser] = useState('');
   const [isSpinning, setIsSpinning] = useState(false);
@@ -81,6 +83,25 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
   };
+  
+  const shareWheel = () => {
+    try {
+      // Share the ORIGINAL families list, not the current one
+      const familiesToShare = originalFamilies.length > 0 ? originalFamilies : families;
+      const jsonString = JSON.stringify(familiesToShare);
+      const safeEncoded = btoa(unescape(encodeURIComponent(jsonString)));
+      
+      const baseUrl = window.location.href.split('?')[0]; 
+      const url = `${baseUrl}?data=${safeEncoded}`;
+      
+      const text = `Hei! Pievienojies Ziemassvētku dāvanu ratam! Spied šeit: ${url}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(whatsappUrl, '_blank');
+    } catch (error) {
+      console.error("Error creating share link:", error);
+      alert("Neizdevās izveidot saiti. Mēģiniet vēlreiz.");
+    }
+  };
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center">
@@ -90,9 +111,14 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
         <div className="w-full bg-white/90 rounded-xl p-4 mb-6 shadow-lg max-h-40 overflow-y-auto">
           <h3 className="text-xmas-darkRed font-bold mb-2 flex justify-between items-center sticky top-0 bg-white/90 pb-2 border-b border-gray-200">
             <span>Rezultātu Tabula</span>
-            <button onClick={shareResults} className="text-sm bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 hover:bg-green-700">
-              <Share2 size={14} /> WhatsApp
-            </button>
+            <div className="flex gap-2">
+              <button onClick={shareWheel} className="text-sm bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 hover:bg-blue-700" title="Kopīgot ratu ar citiem">
+                <Share2 size={14} /> Kopīgot
+              </button>
+              <button onClick={shareResults} className="text-sm bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 hover:bg-green-700" title="Dalīties ar rezultātiem">
+                <Share2 size={14} /> Rezultāti
+              </button>
+            </div>
           </h3>
           <div className="space-y-1">
             {assignments.map((a, i) => (

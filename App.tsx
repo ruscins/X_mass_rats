@@ -13,6 +13,12 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
+  // Store original families list to share correctly
+  const [originalFamilies, setOriginalFamilies] = useState<string[]>(() => {
+    const saved = localStorage.getItem('originalFamilies');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
   const [assignments, setAssignments] = useState<Assignment[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_ASSIGNMENTS);
     return saved ? JSON.parse(saved) : [];
@@ -32,6 +38,7 @@ const App: React.FC = () => {
         
         if (Array.isArray(decodedFamilies) && decodedFamilies.length >= 2) {
           setFamilies(decodedFamilies);
+          setOriginalFamilies(decodedFamilies); // Store original list
           // Don't auto-start game immediately, let them see the list, or start if they prefer
           // But to be "easy to use", let's switch to setup so they can review, or game? 
           // The prompt implies "vispirs prasa ievadīt vardu", so maybe go straight to Setup review?
@@ -58,6 +65,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_FAMILIES, JSON.stringify(families));
   }, [families]);
+  
+  useEffect(() => {
+    localStorage.setItem('originalFamilies', JSON.stringify(originalFamilies));
+  }, [originalFamilies]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_ASSIGNMENTS, JSON.stringify(assignments));
@@ -65,6 +76,8 @@ const App: React.FC = () => {
 
   const handleStartGame = () => {
     if (families.length >= 2) {
+      // Save original list when starting the game
+      setOriginalFamilies(families);
       setMode('game');
     }
   };
@@ -73,11 +86,13 @@ const App: React.FC = () => {
     if (window.confirm("Vai tiešām vēlaties dzēst visus datus un sākt no jauna? Tas izdzēsīs gan dalībniekus, gan rezultātus.")) {
       // 1. Clear State
       setFamilies([]);
+      setOriginalFamilies([]);
       setAssignments([]);
       setMode('setup');
       
       // 2. Clear Storage
       localStorage.removeItem(STORAGE_KEY_FAMILIES);
+      localStorage.removeItem('originalFamilies');
       localStorage.removeItem(STORAGE_KEY_ASSIGNMENTS);
       
       // 3. Clear URL Params without reload
@@ -110,7 +125,8 @@ const App: React.FC = () => {
           <SetupPhase 
             families={families} 
             setFamilies={setFamilies} 
-            onStartGame={handleStartGame} 
+            onStartGame={handleStartGame}
+            originalFamilies={originalFamilies}
           />
         ) : (
           <GamePhase 
@@ -119,6 +135,7 @@ const App: React.FC = () => {
             assignments={assignments}
             setAssignments={setAssignments}
             onReset={handleReset}
+            originalFamilies={originalFamilies}
           />
         )}
       </main>
