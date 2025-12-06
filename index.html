@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="lv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ziemassvētku Dāvanu Rats</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              christmas: ['"Mountains of Christmas"', 'cursive'],
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              xmas: {
+                red: '#D42426',
+                darkRed: '#8B0000',
+                green: '#165B33',
+                gold: '#F8B229',
+                cream: '#F0E68C',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #8B0000;
+        background-image: radial-gradient(circle, #D42426 0%, #8B0000 100%);
+        min-height: 100vh;
+        color: white;
+      }
+      /* Snow effect */
+      .snowflake {
+        position: fixed;
+        top: -10px;
+        color: #fff;
+        font-size: 1em;
+        font-family: Arial, sans-serif;
+        text-shadow: 0 0 5px #000;
+        user-select: none;
+        z-index: 0;
+        animation-name: snowflakes-fall, snowflakes-shake;
+        animation-duration: 10s, 3s;
+        animation-timing-function: linear, ease-in-out;
+        animation-iteration-count: infinite, infinite;
+        animation-play-state: running, running;
+      }
+      @keyframes snowflakes-fall {
+        0% { top: -10%; }
+        100% { top: 100%; }
+      }
+      @keyframes snowflakes-shake {
+        0%, 100% { transform: translateX(0); }
+        50% { transform: translateX(80px); }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "canvas-confetti": "https://aistudiocdn.com/canvas-confetti@^1.9.4",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.25"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <div aria-hidden="true">
+      <div class="snowflake" style="left: 1%; animation-delay: 0s, 0s">❅</div>
+      <div class="snowflake" style="left: 10%; animation-delay: 1s, 1s">❆</div>
+      <div class="snowflake" style="left: 20%; animation-delay: 6s, .5s">❅</div>
+      <div class="snowflake" style="left: 30%; animation-delay: 4s, 2s">❆</div>
+      <div class="snowflake" style="left: 40%; animation-delay: 2s, 2s">❅</div>
+      <div class="snowflake" style="left: 50%; animation-delay: 8s, 3s">❆</div>
+      <div class="snowflake" style="left: 60%; animation-delay: 6s, 2s">❅</div>
+      <div class="snowflake" style="left: 70%; animation-delay: 2.5s, 1s">❆</div>
+      <div class="snowflake" style="left: 80%; animation-delay: 1s, 0s">❅</div>
+      <div class="snowflake" style="left: 90%; animation-delay: 3s, 1.5s">❆</div>
+    </div>
+  </body>
+</html>
