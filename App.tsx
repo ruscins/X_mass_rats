@@ -25,15 +25,32 @@ const App: React.FC = () => {
     
     if (sharedData && families.length === 0) {
       try {
-        // Decode base64 and parse JSON
-        const decodedFamilies = JSON.parse(atob(sharedData));
+        // Decode Unicode safe Base64
+        // Reverse operation of btoa(unescape(encodeURIComponent(str)))
+        const decodedJson = decodeURIComponent(escape(atob(sharedData)));
+        const decodedFamilies = JSON.parse(decodedJson);
+        
         if (Array.isArray(decodedFamilies) && decodedFamilies.length >= 2) {
           setFamilies(decodedFamilies);
-          setMode('game'); // Auto-start game if valid data found
+          // Don't auto-start game immediately, let them see the list, or start if they prefer
+          // But to be "easy to use", let's switch to setup so they can review, or game? 
+          // The prompt implies "vispirs prasa ievadīt vardu", so maybe go straight to Setup review?
+          // Let's go to setup so they can see who is imported.
+          setMode('setup'); 
         }
       } catch (e) {
         console.error("Failed to parse shared URL data", e);
+        // Fallback for simple base64 (old links if any)
+        try {
+           const simpleDecoded = JSON.parse(atob(sharedData));
+           if (Array.isArray(simpleDecoded)) setFamilies(simpleDecoded);
+        } catch(e2) {
+           console.error("Fallback parsing failed", e2);
+        }
       }
+    } else if (families.length >= 2 && assignments.length > 0) {
+      // If we have data and assignments, we probably reloaded in the middle of a game
+      setMode('game');
     }
   }, []);
 
@@ -54,14 +71,19 @@ const App: React.FC = () => {
 
   const handleReset = () => {
     if (window.confirm("Vai tiešām vēlaties dzēst visus datus un sākt no jauna? Tas izdzēsīs gan dalībniekus, gan rezultātus.")) {
+      // 1. Clear State
       setFamilies([]);
       setAssignments([]);
       setMode('setup');
+      
+      // 2. Clear Storage
       localStorage.removeItem(STORAGE_KEY_FAMILIES);
       localStorage.removeItem(STORAGE_KEY_ASSIGNMENTS);
       
-      // Clear URL parameters without reloading page so the shared link data doesn't come back immediately
-      window.history.pushState({}, '', window.location.pathname);
+      // 3. Clear URL Params without reload
+      // We use split('?') to get the clean path regardless of whether we are on localhost or github pages subpath
+      const cleanUrl = window.location.href.split('?')[0];
+      window.history.pushState({}, '', cleanUrl);
     }
   };
 

@@ -28,13 +28,25 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
   };
 
   const shareSetupToWhatsApp = () => {
-    // Encode families to base64 to store in URL
-    const data = btoa(JSON.stringify(families));
-    const url = `${window.location.origin}${window.location.pathname}?data=${data}`;
-    const text = `Hei! Esmu sagatavojis Ziemassvētku dāvanu ratu. Spied šeit, lai sāktu izlozi: ${url}`;
-    
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, '_blank');
+    try {
+      // Safe encoding for Latvian characters (Unicode) to Base64
+      // Standard btoa fails with non-Latin1 characters
+      const jsonString = JSON.stringify(families);
+      const safeEncoded = btoa(unescape(encodeURIComponent(jsonString)));
+      
+      // Construct URL that works on GitHub Pages or locally
+      // We explicitly take the origin and pathname to ensure subdirectories (like on GitHub Pages) are included
+      const baseUrl = window.location.href.split('?')[0]; 
+      const url = `${baseUrl}?data=${safeEncoded}`;
+      
+      const text = `Hei! Esmu sagatavojis Ziemassvētku dāvanu ratu. Spied šeit, lai sāktu izlozi: ${url}`;
+      
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(whatsappUrl, '_blank');
+    } catch (error) {
+      console.error("Error creating share link:", error);
+      alert("Neizdevās izveidot saiti. Mēģiniet vēlreiz.");
+    }
   };
 
   return (
