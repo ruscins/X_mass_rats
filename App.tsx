@@ -29,7 +29,7 @@ const App: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const sharedData = params.get('data');
     
-    if (sharedData && families.length === 0) {
+    if (sharedData) {
       try {
         // Decode Unicode safe Base64
         // Reverse operation of btoa(unescape(encodeURIComponent(str)))
@@ -37,20 +37,38 @@ const App: React.FC = () => {
         const decodedFamilies = JSON.parse(decodedJson);
         
         if (Array.isArray(decodedFamilies) && decodedFamilies.length >= 2) {
+          // If we already have data, ask user what to do
+          if (families.length > 0) {
+            const shouldReplace = window.confirm(
+              "Jūs atvērāt kopīgotu sarakstu. Vai vēlaties aizstāt pašreizējo sarakstu ar jauno?"
+            );
+            if (!shouldReplace) {
+              // Clear URL params but keep current data
+              window.history.replaceState({}, '', window.location.href.split('?')[0]);
+              return;
+            }
+          }
+          
+          // Load the shared data
           setFamilies(decodedFamilies);
           setOriginalFamilies(decodedFamilies); // Store original list
-          // Don't auto-start game immediately, let them see the list, or start if they prefer
-          // But to be "easy to use", let's switch to setup so they can review, or game? 
-          // The prompt implies "vispirs prasa ievadīt vardu", so maybe go straight to Setup review?
-          // Let's go to setup so they can see who is imported.
-          setMode('setup'); 
+          setAssignments([]); // Clear any old assignments
+          setMode('setup');
+          
+          // Clear URL params after loading
+          window.history.replaceState({}, '', window.location.href.split('?')[0]);
         }
       } catch (e) {
         console.error("Failed to parse shared URL data", e);
         // Fallback for simple base64 (old links if any)
         try {
            const simpleDecoded = JSON.parse(atob(sharedData));
-           if (Array.isArray(simpleDecoded)) setFamilies(simpleDecoded);
+           if (Array.isArray(simpleDecoded)) {
+             setFamilies(simpleDecoded);
+             setOriginalFamilies(simpleDecoded);
+             setAssignments([]);
+             setMode('setup');
+           }
         } catch(e2) {
            console.error("Fallback parsing failed", e2);
         }
