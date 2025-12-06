@@ -6,6 +6,7 @@ import { STORAGE_KEY_ASSIGNMENTS, STORAGE_KEY_FAMILIES } from './constants';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>('setup');
+  const [isSharedList, setIsSharedList] = useState(false); // Track if list came from shared link
   
   // State initialization with localStorage check
   const [families, setFamilies] = useState<string[]>(() => {
@@ -53,6 +54,7 @@ const App: React.FC = () => {
           setFamilies(decodedFamilies);
           setOriginalFamilies(decodedFamilies); // Store original list
           setAssignments([]); // Clear any old assignments
+          setIsSharedList(true); // Mark as shared list (read-only)
           setMode('setup');
           
           // Clear URL params after loading
@@ -67,6 +69,7 @@ const App: React.FC = () => {
              setFamilies(simpleDecoded);
              setOriginalFamilies(simpleDecoded);
              setAssignments([]);
+             setIsSharedList(true); // Mark as shared list
              setMode('setup');
            }
         } catch(e2) {
@@ -96,6 +99,7 @@ const App: React.FC = () => {
     if (families.length >= 2) {
       // Save original list when starting the game
       setOriginalFamilies(families);
+      setIsSharedList(false); // Once game starts, allow editing again
       setMode('game');
     }
   };
@@ -106,6 +110,7 @@ const App: React.FC = () => {
       setFamilies([]);
       setOriginalFamilies([]);
       setAssignments([]);
+      setIsSharedList(false);
       setMode('setup');
       
       // 2. Clear Storage
@@ -145,6 +150,7 @@ const App: React.FC = () => {
             setFamilies={setFamilies} 
             onStartGame={handleStartGame}
             originalFamilies={originalFamilies}
+            isReadOnly={isSharedList}
           />
         ) : (
           <GamePhase 

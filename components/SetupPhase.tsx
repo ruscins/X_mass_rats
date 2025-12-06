@@ -7,9 +7,10 @@ interface SetupPhaseProps {
   setFamilies: (families: string[]) => void;
   onStartGame: () => void;
   originalFamilies: string[];
+  isReadOnly?: boolean;
 }
 
-export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, onStartGame, originalFamilies }) => {
+export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, onStartGame, originalFamilies, isReadOnly = false }) => {
   const [inputValue, setInputValue] = useState('');
 
   const addFamily = (e?: React.FormEvent) => {
@@ -60,22 +61,30 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
     <div className="max-w-md mx-auto w-full p-4 bg-white/10 backdrop-blur-md rounded-2xl shadow-xl border border-white/20">
       <div className="text-center mb-6">
         <Gift className="w-16 h-16 mx-auto text-xmas-gold mb-2" />
-        <h2 className="text-3xl font-christmas text-white mb-2">Sagatavošanās</h2>
-        <p className="text-gray-200 text-sm">Ievadiet ģimenes vai cilvēkus, kuri piedalīsies dāvanu izlozē.</p>
+        <h2 className="text-3xl font-christmas text-white mb-2">
+          {isReadOnly ? 'Pievienojies Izlozei!' : 'Sagatavošanās'}
+        </h2>
+        <p className="text-gray-200 text-sm">
+          {isReadOnly 
+            ? 'Šis saraksts ir kopīgots ar tevi. Nospied "Sākt Izlozi!" lai turpinātu.' 
+            : 'Ievadiet ģimenes vai cilvēkus, kuri piedalīsies dāvanu izlozē.'}
+        </p>
       </div>
 
-      <form onSubmit={addFamily} className="flex gap-2 mb-6">
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Ievadi vārdu/ģimeni..."
-          className="flex-1 px-4 py-3 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-xmas-gold"
-        />
-        <Button type="button" onClick={() => addFamily()} className="!px-4 !py-0 flex items-center justify-center">
-          <Plus size={24} />
-        </Button>
-      </form>
+      {!isReadOnly && (
+        <form onSubmit={addFamily} className="flex gap-2 mb-6">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Ievadi vārdu/ģimeni..."
+            className="flex-1 px-4 py-3 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-xmas-gold"
+          />
+          <Button type="button" onClick={() => addFamily()} className="!px-4 !py-0 flex items-center justify-center">
+            <Plus size={24} />
+          </Button>
+        </form>
+      )}
 
       <div className="space-y-2 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
         {families.length === 0 && (
@@ -86,12 +95,14 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
         {families.map((family, index) => (
           <div key={index} className="flex justify-between items-center bg-white/90 p-3 rounded-lg text-xmas-darkRed animate-fadeIn">
             <span className="font-semibold">{family}</span>
-            <button 
-              onClick={() => removeFamily(index)}
-              className="text-red-500 hover:text-red-700 p-1"
-            >
-              <Trash2 size={20} />
-            </button>
+            {!isReadOnly && (
+              <button 
+                onClick={() => removeFamily(index)}
+                className="text-red-500 hover:text-red-700 p-1"
+              >
+                <Trash2 size={20} />
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -105,7 +116,7 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
           Sākt Izlozi!
         </Button>
         
-        {families.length >= 2 && (
+        {!isReadOnly && families.length >= 2 && (
           <Button 
             onClick={shareSetupToWhatsApp}
             variant="secondary"
@@ -115,7 +126,7 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
           </Button>
         )}
         
-        {families.length > 0 && (
+        {!isReadOnly && families.length > 0 && (
           <Button 
             onClick={clearAllFamilies}
             variant="secondary"
