@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { Plus, Trash2, Gift, Share2 } from 'lucide-react';
+import { soundEffects } from '../utils/sounds';
 
 interface SetupPhaseProps {
   families: string[];
@@ -19,6 +20,9 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
       if (!families.includes(inputValue.trim())) {
         setFamilies([...families, inputValue.trim()]);
         setInputValue('');
+        soundEffects.success();
+      } else {
+        soundEffects.error();
       }
     }
   };
@@ -27,10 +31,12 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
     const newFamilies = [...families];
     newFamilies.splice(index, 1);
     setFamilies(newFamilies);
+    soundEffects.delete();
   };
 
   const shareSetupToWhatsApp = () => {
     try {
+      soundEffects.whoosh();
       // Safe encoding for Latvian characters (Unicode) to Base64
       // Standard btoa fails with non-Latin1 characters
       const jsonString = JSON.stringify(families);
@@ -54,6 +60,7 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
   const clearAllFamilies = () => {
     if (families.length > 0 && window.confirm("Vai tiešām vēlaties izdzēst visus dalībniekus?")) {
       setFamilies([]);
+      soundEffects.delete();
     }
   };
 
@@ -88,17 +95,17 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
 
       <div className="space-y-2 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
         {families.length === 0 && (
-          <div className="text-center text-white/50 py-4 italic">
+          <div className="text-center text-white/50 py-4 italic animate-fadeIn">
             Saraksts ir tukšs. Pievieno vismaz 2 dalībniekus.
           </div>
         )}
         {families.map((family, index) => (
-          <div key={index} className="flex justify-between items-center bg-white/90 p-3 rounded-lg text-xmas-darkRed animate-fadeIn">
-            <span className="font-semibold">{family}</span>
+          <div key={index} className="flex justify-between items-center bg-white/90 p-3 rounded-lg text-xmas-darkRed animate-slideInUp hover:bg-white hover:shadow-lg transition-all duration-200 group">
+            <span className="font-semibold group-hover:scale-105 transition-transform">{family}</span>
             {!isReadOnly && (
               <button 
                 onClick={() => removeFamily(index)}
-                className="text-red-500 hover:text-red-700 p-1"
+                className="text-red-500 hover:text-red-700 p-1 hover:scale-125 transition-all duration-200"
               >
                 <Trash2 size={20} />
               </button>

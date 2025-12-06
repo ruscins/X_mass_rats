@@ -5,6 +5,7 @@ import { Button } from './Button';
 import { Assignment, WheelSegment } from '../types';
 import { WHEEL_COLORS } from '../constants';
 import { User, ArrowRight, Share2, RefreshCw } from 'lucide-react';
+import { soundEffects } from '../utils/sounds';
 
 interface GamePhaseProps {
   families: string[];
@@ -38,11 +39,15 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
   const handleStartSpin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser.trim()) return;
+    soundEffects.spinStart();
     setStep('spin');
   };
 
   const handleSpinEnd = (winnerSegment: WheelSegment) => {
     const winnerName = winnerSegment.label;
+    
+    // Play win sound
+    soundEffects.win();
     
     // Trigger confetti
     confetti({
@@ -86,6 +91,7 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
   
   const shareWheel = () => {
     try {
+      soundEffects.whoosh();
       // Share the ORIGINAL families list, not the current one
       const familiesToShare = originalFamilies.length > 0 ? originalFamilies : families;
       const jsonString = JSON.stringify(familiesToShare);

@@ -3,10 +3,13 @@ import { SetupPhase } from './components/SetupPhase';
 import { GamePhase } from './components/GamePhase';
 import { AppMode, Assignment } from './types';
 import { STORAGE_KEY_ASSIGNMENTS, STORAGE_KEY_FAMILIES } from './constants';
+import { soundEffects } from './utils/sounds';
+import { Volume2, VolumeX } from 'lucide-react';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>('setup');
   const [isSharedList, setIsSharedList] = useState(false); // Track if list came from shared link
+  const [isMuted, setIsMuted] = useState(false);
   
   // State initialization with localStorage check
   const [families, setFamilies] = useState<string[]>(() => {
@@ -127,6 +130,18 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col p-4 relative z-10 overflow-x-hidden pb-12">
+      {/* Sound toggle button */}
+      <button
+        onClick={() => {
+          const muted = soundEffects.toggleMute();
+          setIsMuted(muted);
+        }}
+        className="fixed top-4 right-4 z-50 bg-white/20 backdrop-blur-sm p-3 rounded-full hover:bg-white/30 transition-all hover:scale-110 active:scale-95"
+        title={isMuted ? "Ieslēgt skaņu" : "Izslēgt skaņu"}
+      >
+        {isMuted ? <VolumeX size={24} className="text-white" /> : <Volume2 size={24} className="text-white" />}
+      </button>
+
       <header className="text-center py-6 mb-4">
         <h1 className="text-4xl md:text-5xl font-christmas font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
           Ziemassvētku Rats
