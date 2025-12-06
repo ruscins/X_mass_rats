@@ -29,16 +29,33 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
   const [step, setStep] = useState<'enterName' | 'spin' | 'result'>('enterName');
   const [lastWinner, setLastWinner] = useState<string | null>(null);
 
-  // Generate wheel segments from available families
-  const segments: WheelSegment[] = families.map((family, index) => ({
-    id: `seg-${index}`,
-    label: family,
-    color: WHEEL_COLORS[index % WHEEL_COLORS.length]
-  }));
+  // Get available spinners - those who haven't spun yet OR from original list if starting fresh
+  const availableSpinners = originalFamilies.filter(person => 
+    !assignments.find(a => a.spinner === person)
+  );
+
+  // Generate wheel segments from available families, excluding current spinner
+  const getWheelSegments = (): WheelSegment[] => {
+    const eligibleFamilies = families.filter(f => f !== currentUser);
+    return eligibleFamilies.map((family, index) => ({
+      id: `seg-${index}`,
+      label: family,
+      color: WHEEL_COLORS[index % WHEEL_COLORS.length]
+    }));
+  };
+
+  const segments = getWheelSegments();
 
   const handleStartSpin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser.trim()) return;
+    
+    // Validate that user can't spin for themselves
+    if (segments.length === 0) {
+      alert("Nav pieejamu saņēmēju! Tu nevari apdāvināt sevi.");
+      return;
+    }
+    
     soundEffects.spinStart();
     setStep('spin');
   };
@@ -157,22 +174,46 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
           {step === 'enterName' && (
             <div className="w-full max-w-md bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 animate-fadeIn">
               <h2 className="text-2xl font-christmas text-center mb-4 text-white">Kas griež ratu?</h2>
-              <form onSubmit={handleStartSpin} className="flex flex-col gap-4">
-                <div className="relative">
-                  <User className="absolute left-3 top-3.5 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    required
-                    value={currentUser}
-                    onChange={(e) => setCurrentUser(e.target.value)}
-                    placeholder="Ievadi savu vārdu..."
-                    className="w-full pl-10 pr-4 py-3 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-xmas-gold"
-                  />
+              
+              {availableSpinners.length > 0 ? (
+                <form onSubmit={handleStartSpin} className="flex flex-col gap-4">
+                  <div className="relative">
+                    <User className="absolute left-3 top-3.5 text-gray-400 z-10" size={20} />
+                    <select
+                      required
+                      value={currentUser}
+                      onChange={(e) => setCurrentUser(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-xmas-gold appearance-none bg-white cursor-pointer"
+                    >
+                      <option value="">Izvēlies savu vārdu...</option>
+                      {availableSpinners.map((person) => (
+                        <option key={person} value={person}>
+                          {person}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-3.5 pointer-events-none text-gray-400">▼</div>
+                  </div>
+                  
+                  {currentUser && (
+                    <div className="text-sm text-white/80 bg-white/10 p-3 rounded-lg">
+                      <p>🎁 Tu griezi ratu, lai noskaidrotu, <strong>kuram tu dāvināsi</strong> dāvanu!</p>
+                      <p className="mt-1 text-xs opacity-75">Tu nevari izlozēt sevi.</p>
+                    </div>
+                  )}
+                  
+                  <Button type="submit" disabled={!currentUser.trim()}>
+                    Turpināt uz Ratu
+                  </Button>
+                </form>
+              ) : (
+                <div className="text-center text-white">
+                  <p className="mb-4">Visi dalībnieki jau ir griezuši ratu!</p>
+                  <Button onClick={onReset} variant="secondary">
+                    Sākt no jauna
+                  </Button>
                 </div>
-                <Button type="submit" disabled={!currentUser.trim()}>
-                  Turpināt uz Ratu
-                </Button>
-              </form>
+              )}
             </div>
           )}
 
