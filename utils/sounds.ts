@@ -37,7 +37,69 @@ class SoundEffects {
     oscillator.stop(now + duration);
   }
 
-  // Jingle Bells melody
+  // Play note with harmony (adds warmth)
+  private playChord(frequencies: number[], duration: number, volume: number = 0.2, startTime: number = 0) {
+    if (!this.audioContext || this.isMuted || !this.backgroundMusicGain) return;
+
+    frequencies.forEach((freq, index) => {
+      const oscillator = this.audioContext!.createOscillator();
+      const gainNode = this.audioContext!.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(this.backgroundMusicGain!);
+
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+
+      const now = this.audioContext!.currentTime + startTime;
+      // Reduce volume for harmonies
+      const harmonyVolume = index === 0 ? volume : volume * 0.5;
+      gainNode.gain.setValueAtTime(harmonyVolume, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+    });
+  }
+
+  // Silent Night melody (warmer, slower)
+  private playSilentNight() {
+    if (!this.audioContext || this.isMuted || !this.backgroundMusicGain) return;
+
+    const melody = [
+      // Silent Night, Holy Night
+      { notes: [783.99], duration: 0.6 }, // G
+      { notes: [880.00], duration: 0.3 }, // A
+      { notes: [783.99], duration: 0.3 }, // G
+      { notes: [659.25], duration: 0.9 }, // E
+      { notes: [783.99], duration: 0.6 }, // G
+      { notes: [880.00], duration: 0.3 }, // A
+      { notes: [783.99], duration: 0.3 }, // G
+      { notes: [659.25], duration: 0.9 }, // E
+      { notes: [1046.50], duration: 0.6 }, // C
+      { notes: [1046.50], duration: 0.3 }, // C
+      { notes: [987.77], duration: 0.9 }, // B
+      { notes: [880.00], duration: 0.6 }, // A
+      { notes: [880.00], duration: 0.3 }, // A
+      { notes: [783.99], duration: 0.9 }, // G
+    ];
+
+    let time = 0;
+    melody.forEach(({ notes, duration }) => {
+      // Add harmony (thirds and fifths)
+      const harmony = [
+        notes[0],
+        notes[0] * 1.25, // Major third
+        notes[0] * 1.5   // Perfect fifth
+      ];
+      this.playChord(harmony, duration, 0.08, time);
+      time += duration + 0.1;
+    });
+
+    return time;
+  }
+
+  // Jingle Bells melody with harmony
   private playJingleBells() {
     if (!this.audioContext || this.isMuted || !this.backgroundMusicGain) return;
 
@@ -50,30 +112,48 @@ class SoundEffects {
       { note: 659.25, duration: 0.6 }, // E
       { note: 659.25, duration: 0.3 }, // E
       { note: 783.99, duration: 0.3 }, // G
-      { note: 523.25, duration: 0.3 }, // C
+      { note: 523.25, duration: 0.4 }, // C
       { note: 587.33, duration: 0.3 }, // D
       { note: 659.25, duration: 0.9 }, // E
     ];
 
     let time = 0;
     melody.forEach(({ note, duration }) => {
-      const oscillator = this.audioContext!.createOscillator();
-      const gainNode = this.audioContext!.createGain();
+      // Add harmony
+      const harmony = [note, note * 1.25, note * 1.5];
+      this.playChord(harmony, duration, 0.08, time);
+      time += duration + 0.05;
+    });
 
-      oscillator.connect(gainNode);
-      gainNode.connect(this.backgroundMusicGain!);
+    return time;
+  }
 
-      oscillator.frequency.value = note;
-      oscillator.type = 'sine';
+  // We Wish You a Merry Christmas
+  private playMerryChristmas() {
+    if (!this.audioContext || this.isMuted || !this.backgroundMusicGain) return;
 
-      const now = this.audioContext!.currentTime + time;
-      gainNode.gain.setValueAtTime(0.1, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+    const melody = [
+      { note: 523.25, duration: 0.3 }, // C
+      { note: 587.33, duration: 0.3 }, // D
+      { note: 587.33, duration: 0.3 }, // D
+      { note: 659.25, duration: 0.3 }, // E
+      { note: 587.33, duration: 0.3 }, // D
+      { note: 523.25, duration: 0.3 }, // C
+      { note: 523.25, duration: 0.3 }, // C
+      { note: 523.25, duration: 0.3 }, // C
+      { note: 659.25, duration: 0.3 }, // E
+      { note: 783.99, duration: 0.3 }, // G
+      { note: 880.00, duration: 0.3 }, // A
+      { note: 880.00, duration: 0.3 }, // A
+      { note: 880.00, duration: 0.3 }, // A
+      { note: 783.99, duration: 0.6 }, // G
+    ];
 
-      oscillator.start(now);
-      oscillator.stop(now + duration);
-
-      time += duration + 0.05; // Small gap between notes
+    let time = 0;
+    melody.forEach(({ note, duration }) => {
+      const harmony = [note, note * 1.25, note * 1.5];
+      this.playChord(harmony, duration, 0.08, time);
+      time += duration + 0.05;
     });
 
     return time;
@@ -84,10 +164,19 @@ class SoundEffects {
     if (this.isPlayingMusic || this.isMuted) return;
     this.isPlayingMusic = true;
 
+    let songIndex = 0;
+    const songs = [
+      () => this.playSilentNight(),
+      () => this.playJingleBells(),
+      () => this.playMerryChristmas(),
+    ];
+
     const playLoop = () => {
-      const duration = this.playJingleBells();
+      const duration = songs[songIndex]();
+      songIndex = (songIndex + 1) % songs.length; // Cycle through songs
+      
       if (this.isPlayingMusic) {
-        this.musicIntervalId = window.setTimeout(playLoop, (duration! + 2) * 1000); // Repeat after melody + pause
+        this.musicIntervalId = window.setTimeout(playLoop, (duration! + 3) * 1000); // Pause between songs
       }
     };
 
