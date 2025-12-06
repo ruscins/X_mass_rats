@@ -82,6 +82,12 @@ const App: React.FC = () => {
       }
     } else if (families.length >= 2 && assignments.length > 0) {
       // If we have data and assignments, we probably reloaded in the middle of a game
+      // Sync families with assignments - remove people who already received gifts
+      const receiversSet = new Set(assignments.map(a => a.receiver));
+      const syncedFamilies = families.filter(f => !receiversSet.has(f));
+      if (syncedFamilies.length !== families.length) {
+        setFamilies(syncedFamilies);
+      }
       setMode('game');
     }
   }, []);
