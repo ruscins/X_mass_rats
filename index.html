@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ziemassvētku Dāvanu Rats</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
               christmas: ['"Mountains of Christmas"', 'cursive'],
-              sans: ['Inter', 'sans-serif'],
+              sans: ['"DM Sans"', 'sans-serif'],
             },
             colors: {
               xmas: {
@@ -28,24 +28,36 @@
       }
     </script>
     <style>
+      :root {
+        color-scheme: light;
+        --forest: #123b2b;
+        --paper: #fffdf7;
+        --ink: #17392c;
+        --muted: #526258;
+        --gold: #f3c869;
+        --red: #a43636;
+      }
       body {
-        background-color: #8B0000;
-        background-image: radial-gradient(circle, #D42426 0%, #8B0000 100%);
+        margin: 0;
+        background-color: var(--forest);
+        background-image: radial-gradient(ellipse at 50% 0%, #286347 0%, transparent 58%), radial-gradient(circle at 1px 1px, rgba(255,255,255,.07) 1px, transparent 0);
+        background-size: auto, 28px 28px;
         min-height: 100vh;
         color: white;
+        font-family: 'DM Sans', sans-serif;
       }
       /* Snow effect */
       .snowflake {
         position: fixed;
         top: -10px;
-        color: #fff;
+        color: #f8eccb;
         font-size: 1em;
-        font-family: Arial, sans-serif;
-        text-shadow: 0 0 5px #000;
+        font-family: sans-serif;
+        opacity: .28;
         user-select: none;
         z-index: 0;
         animation-name: snowflakes-fall, snowflakes-shake;
-        animation-duration: 10s, 3s;
+        animation-duration: 16s, 5s;
         animation-timing-function: linear, ease-in-out;
         animation-iteration-count: infinite, infinite;
         animation-play-state: running, running;
@@ -77,7 +89,7 @@
       }
       
       .animate-fadeIn {
-        animation: fadeIn 0.5s ease-out;
+        animation: fadeIn 0.35s ease-out;
       }
       
       .animate-popIn {
@@ -105,6 +117,28 @@
       
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: rgba(255, 255, 255, 0.5);
+      }
+
+      .display-type { font-family: 'Mountains of Christmas', cursive; }
+      .surface-panel { border: 1px solid #d6ded7; border-radius: 12px; background: var(--paper); color: var(--ink); box-shadow: 0 18px 48px rgba(4, 25, 17, .22); }
+      .eyebrow { color: #86601e; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      .field-label { display: block; margin-bottom: .4rem; color: var(--ink); font-size: .875rem; font-weight: 700; }
+      .field-control { min-height: 2.75rem; border: 1px solid #aebdb1; border-radius: 8px; background: white; padding: .65rem .8rem; color: var(--ink); font: inherit; }
+      .field-control::placeholder { color: #68766d; opacity: 1; }
+      .field-control:focus-visible { outline: 3px solid #d8a93f; outline-offset: 2px; border-color: #17392c; }
+      .icon-button { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 8px; color: inherit; transition: background-color .15s ease; }
+      .icon-button:hover { background: rgba(23, 57, 44, .09); }
+      .icon-button:focus-visible, .text-button:focus-visible, button:focus-visible { outline: 3px solid #d8a93f; outline-offset: 2px; }
+      .action-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: .5rem; border: 1px solid #cbd5cc; border-radius: 8px; padding: .65rem .8rem; color: var(--ink); font-weight: 600; }
+      .action-button:hover { background: #f1f5f0; }
+      .action-button-primary { border-color: #1d704e; background: #1d704e; color: white; }
+      .action-button-primary:hover { background: #165b3d; }
+      .text-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: .4rem; border-radius: 6px; padding: .4rem .5rem; font-size: .875rem; font-weight: 600; }
+      .text-button:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+        .snowflake { display: none; }
       }
     </style>
   </head>

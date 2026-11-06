@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { Wheel } from './Wheel';
 import { Button } from './Button';
 import { Assignment, WheelSegment } from '../types';
 import { WHEEL_COLORS } from '../constants';
-import { User, ArrowRight, Share2, RefreshCw } from 'lucide-react';
+import { ArrowRight, Check, Copy, RefreshCw, Share2, Undo2, User } from 'lucide-react';
 import { soundEffects } from '../utils/sounds';
+import { getViableRecipients } from '../utils/assignment';
+import { createShareUrl } from '../utils/sharing';
+import { ShareDialog } from './ShareDialog';
+import { useReducedMotion } from 'framer-motion';
 
 interface GamePhaseProps {
   families: string[];
@@ -14,6 +18,7 @@ interface GamePhaseProps {
   setAssignments: (a: Assignment[]) => void;
   onReset: () => void;
   originalFamilies: string[];
+  isSecretResults: boolean;
 }
 
 export const GamePhase: React.FC<GamePhaseProps> = ({ 
@@ -22,40 +27,39 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
   assignments, 
   setAssignments,
   onReset,
-  originalFamilies
+  originalFamilies,
+  isSecretResults
 }) => {
   const [currentUser, setCurrentUser] = useState('');
   const [isSpinning, setIsSpinning] = useState(false);
   const [step, setStep] = useState<'enterName' | 'spin' | 'result'>('enterName');
   const [lastWinner, setLastWinner] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
-  // Get available spinners - those who haven't spun yet OR from original list if starting fresh
   const availableSpinners = originalFamilies.filter(person => 
     !assignments.find(a => a.spinner === person)
   );
 
-  // Generate wheel segments from available families, excluding current spinner
-  const getWheelSegments = (): WheelSegment[] => {
-    const eligibleFamilies = families.filter(f => f !== currentUser);
-    return eligibleFamilies.map((family, index) => ({
+  const eligibleFamilies = getViableRecipients(availableSpinners, families, currentUser);
+  const segments: WheelSegment[] = eligibleFamilies.map((family, index) => ({
       id: `seg-${index}`,
       label: family,
       color: WHEEL_COLORS[index % WHEEL_COLORS.length]
-    }));
-  };
-
-  const segments = getWheelSegments();
+  }));
 
   const handleStartSpin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser.trim()) return;
+    if (!currentUser.trim() || !availableSpinners.includes(currentUser)) return;
     
-    // Validate that user can't spin for themselves
     if (segments.length === 0) {
-      alert("Nav pieejamu saņēmēju! Tu nevari apdāvināt sevi.");
+      setMessage('Šim griezienam nav derīga saņēmēja. Atcel iepriekšējo griezienu vai sāc jaunu izlozi.');
       return;
     }
     
+    setMessage('');
     soundEffects.spinStart();
     setStep('spin');
   };
@@ -63,20 +67,18 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
   const handleSpinEnd = (winnerSegment: WheelSegment) => {
     const winnerName = winnerSegment.label;
     
-    // Play win sound
     soundEffects.win();
-    
-    // Trigger confetti
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#D42426', '#165B33', '#F8B229', '#FFFFFF']
-    });
+    if (!prefersReducedMotion) {
+      confetti({
+        particleCount: 90,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#D42426', '#165B33', '#F8B229', '#FFFFFF']
+      });
+    }
 
     setLastWinner(winnerName);
     
-    // Save assignment
     const newAssignment: Assignment = {
       spinner: currentUser,
       receiver: winnerName,
@@ -84,8 +86,6 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
     };
     
     setAssignments([...assignments, newAssignment]);
-    
-    // Remove winner from the wheel for future spins
     const remainingFamilies = families.filter(f => f !== winnerName);
     setFamilies(remainingFamilies);
 
@@ -95,158 +95,170 @@ export const GamePhase: React.FC<GamePhaseProps> = ({
   const handleNextTurn = () => {
     setLastWinner(null);
     setCurrentUser('');
+    setMessage('');
     setStep('enterName');
   };
 
-  const shareResults = () => {
-    const text = "🎄 Ziemassvētku Izlozes Rezultāti 🎄\n\n" + 
+  const undoLastDraw = () => {
+    const previousAssignments = assignments.slice(0, -1);
+    const assignedReceivers = new Set(previousAssignments.map((assignment) => assignment.receiver));
+    setAssignments(previousAssignments);
+    setFamilies(originalFamilies.filter((person) => !assignedReceivers.has(person)));
+    setLastWinner(null);
+    setCurrentUser('');
+    setMessage('Pēdējais grieziens atcelts.');
+    setStep('enterName');
+  };
+
+  const shareResults = async () => {
+    const text = "Ziemassvētku izlozes rezultāti\n\n" +
       assignments.map(a => `${a.spinner} 🎁 ${a.receiver}`).join('\n');
-    
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, '_blank');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Ziemassvētku izlozes rezultāti', text });
+        return;
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      window.prompt('Nokopē izlozes rezultātus:', text);
+    }
   };
   
   const shareWheel = () => {
     try {
       soundEffects.whoosh();
-      // Share the ORIGINAL families list, not the current one
-      const familiesToShare = originalFamilies.length > 0 ? originalFamilies : families;
-      const jsonString = JSON.stringify(familiesToShare);
-      const safeEncoded = btoa(unescape(encodeURIComponent(jsonString)));
-      
-      const baseUrl = window.location.href.split('?')[0]; 
-      const url = `${baseUrl}?data=${safeEncoded}`;
-      
-      const text = `Hei! Pievienojies Ziemassvētku dāvanu ratam! Spied šeit: ${url}`;
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(whatsappUrl, '_blank');
+      setShareUrl(createShareUrl(originalFamilies.length > 0 ? originalFamilies : families));
     } catch (error) {
       console.error("Error creating share link:", error);
-      alert("Neizdevās izveidot saiti. Mēģiniet vēlreiz.");
+      setMessage('Neizdevās izveidot kopīgošanas saiti.');
     }
   };
 
+  const completed = assignments.length >= originalFamilies.length && originalFamilies.length > 0;
+  const progress = originalFamilies.length ? Math.min(assignments.length / originalFamilies.length, 1) * 100 : 0;
+  const showResultsTable = assignments.length > 0 && (!isSecretResults || (completed && step !== 'result'));
+
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center">
-      
-      {/* Header Results Table (Visible always to see progress) */}
-      {assignments.length > 0 && (
-        <div className="w-full bg-white/90 rounded-xl p-4 mb-6 shadow-lg max-h-40 overflow-y-auto">
-          <h3 className="text-xmas-darkRed font-bold mb-2 flex justify-between items-center sticky top-0 bg-white/90 pb-2 border-b border-gray-200">
-            <span>Rezultātu Tabula</span>
-            <div className="flex gap-2">
-              <button onClick={shareWheel} className="text-sm bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 hover:bg-blue-700" title="Kopīgot ratu ar citiem">
-                <Share2 size={14} /> Kopīgot
-              </button>
-              <button onClick={shareResults} className="text-sm bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 hover:bg-green-700" title="Dalīties ar rezultātiem">
-                <Share2 size={14} /> Rezultāti
-              </button>
-            </div>
-          </h3>
-          <div className="space-y-1">
-            {assignments.map((a, i) => (
-              <div key={i} className="flex justify-between items-center text-sm text-gray-800 border-b border-gray-100 last:border-0 py-1">
-                <span className="font-semibold">{a.spinner}</span>
-                <ArrowRight size={14} className="text-xmas-gold mx-2" />
-                <span className="font-bold text-xmas-darkRed">{a.receiver}</span>
-              </div>
-            ))}
-          </div>
+      <div className="mb-6 w-full max-w-xl">
+        <div className="mb-2 flex items-center justify-between gap-4 text-sm text-white">
+          <span className="font-semibold">Izloze</span>
+          <span>{assignments.length} / {originalFamilies.length} dalībnieki</span>
         </div>
+        <div
+          className="h-2 overflow-hidden rounded-full bg-white/20"
+          role="progressbar"
+          aria-label="Izlozes progress"
+          aria-valuemin={0}
+          aria-valuemax={originalFamilies.length}
+          aria-valuenow={assignments.length}
+        >
+          <div className="h-full rounded-full bg-[#f3c869] transition-[width] duration-500" style={{ width: `${progress}%` }} />
+        </div>
+      </div>
+
+      {showResultsTable && (
+        <section className="surface-panel mb-6 w-full p-4 sm:p-5" aria-labelledby="results-heading">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#d6ded7] pb-3">
+            <h2 id="results-heading" className="text-lg font-bold text-[#17392c]">{completed ? 'Visi rezultāti' : 'Līdzšinējie rezultāti'}</h2>
+            <div className="flex flex-wrap gap-1">
+              <button type="button" onClick={shareWheel} className="text-button"><Copy size={16} /> Kopīgot sarakstu</button>
+              <button type="button" onClick={shareResults} className="text-button"><Share2 size={16} /> Dalīties ar rezultātiem</button>
+            </div>
+          </div>
+          <ul className="max-h-48 divide-y divide-[#e3e8e3] overflow-y-auto">
+            {assignments.map((assignment, index) => (
+              <li key={`${assignment.spinner}-${index}`} className="flex items-center justify-between gap-3 py-2 text-sm text-[#17392c]">
+                <span className="min-w-0 flex-1 break-words font-semibold">{assignment.spinner}</span>
+                <ArrowRight size={15} aria-hidden="true" className="shrink-0 text-[#9a6b1e]" />
+                <span className="min-w-0 flex-1 break-words text-right font-semibold">{assignment.receiver}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {/* Main Game Area */}
-      {families.length === 0 && step !== 'result' ? (
-        <div className="text-center bg-white/10 backdrop-blur-md p-8 rounded-2xl border border-white/20">
-          <h2 className="text-3xl font-christmas mb-4 text-white">Izloze Pabeigta!</h2>
-          <p className="mb-6 text-white/90">Visi ir izlozēti. Priecīgus Ziemassvētkus!</p>
-          <div className="flex flex-col gap-4 justify-center">
-            <Button onClick={shareResults} className="bg-green-600 text-white hover:bg-green-700 !border-none">
-               <Share2 size={18} className="inline mr-2"/> Sūtīt rezultātus WhatsApp
-            </Button>
-            <Button onClick={onReset} variant="secondary">
-              <RefreshCw className="inline mr-2" size={18}/> Sākt pilnībā no jauna
-            </Button>
+      {completed && step !== 'result' ? (
+        <section className="surface-panel w-full max-w-xl p-6 text-center sm:p-8">
+          <Check size={30} aria-hidden="true" className="mx-auto mb-3 text-[#1d704e]" />
+          <h2 className="display-type text-3xl text-[#17392c]">Izloze pabeigta</h2>
+          <p className="mt-2 text-sm text-[#526258]">Visi dalībnieki ir izlozējuši saņēmēju.</p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Button onClick={shareResults} className="w-full !rounded-lg sm:flex-1"><Share2 size={17} /> {copied ? 'Rezultāti nokopēti' : 'Dalīties ar rezultātiem'}</Button>
+            <Button onClick={onReset} variant="secondary" className="w-full !rounded-lg sm:flex-1"><RefreshCw size={17} /> Jauna izloze</Button>
           </div>
-        </div>
+        </section>
       ) : (
         <>
           {step === 'enterName' && (
-            <div className="w-full max-w-md bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 animate-fadeIn">
-              <h2 className="text-2xl font-christmas text-center mb-4 text-white">Kas griež ratu?</h2>
-              
+            <section className="surface-panel w-full max-w-xl p-5 sm:p-7">
+              <p className="eyebrow">Nākamais solis</p>
+              <h2 className="display-type mb-5 mt-2 text-3xl text-[#17392c]">Kas griež ratu?</h2>
               {availableSpinners.length > 0 ? (
                 <form onSubmit={handleStartSpin} className="flex flex-col gap-4">
+                  <label htmlFor="current-spinner" className="field-label">Izvēlies savu vārdu</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3.5 text-gray-400 z-10" size={20} />
+                    <User className="pointer-events-none absolute left-3 top-3.5 text-[#526258]" size={18} aria-hidden="true" />
                     <select
+                      id="current-spinner"
                       required
                       value={currentUser}
-                      onChange={(e) => setCurrentUser(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-xmas-gold appearance-none bg-white cursor-pointer"
+                      onChange={(event) => setCurrentUser(event.target.value)}
+                      className="field-control w-full pl-10 pr-10"
                     >
-                      <option value="">Izvēlies savu vārdu...</option>
-                      {availableSpinners.map((person) => (
-                        <option key={person} value={person}>
-                          {person}
-                        </option>
-                      ))}
+                      <option value="">Izvēlies dalībnieku…</option>
+                      {availableSpinners.map((person) => <option key={person} value={person}>{person}</option>)}
                     </select>
-                    <div className="absolute right-3 top-3.5 pointer-events-none text-gray-400">▼</div>
                   </div>
-                  
-                  {currentUser && (
-                    <div className="text-sm text-white/80 bg-white/10 p-3 rounded-lg">
-                      <p>🎁 Tu griezi ratu, lai noskaidrotu, <strong>kuram tu dāvināsi</strong> dāvanu!</p>
-                      <p className="mt-1 text-xs opacity-75">Tu nevari izlozēt sevi.</p>
-                    </div>
-                  )}
-                  
-                  <Button type="submit" disabled={!currentUser.trim()}>
-                    Turpināt uz Ratu
-                  </Button>
+                  {currentUser && <p className="text-sm leading-6 text-[#526258]">Rats parādīs tikai tos saņēmējus, pēc kuriem izloze joprojām būs pabeidzama.</p>}
+                  <p className="min-h-5 text-sm text-[#a43636]" role="status">{message}</p>
+                  <Button type="submit" disabled={!currentUser.trim()} className="w-full !rounded-lg">Turpināt pie rata <ArrowRight size={17} /></Button>
                 </form>
               ) : (
-                <div className="text-center text-white">
-                  <p className="mb-4">Visi dalībnieki jau ir griezuši ratu!</p>
-                  <Button onClick={onReset} variant="secondary">
-                    Sākt no jauna
-                  </Button>
+                <div className="flex flex-col gap-4">
+                  <p className="text-sm text-[#526258]">Visi dalībnieki jau ir griezuši ratu.</p>
+                  <Button onClick={onReset} variant="secondary" className="!rounded-lg"><RefreshCw size={17} /> Sākt jaunu izlozi</Button>
                 </div>
               )}
-            </div>
+              {assignments.length > 0 && <button type="button" onClick={undoLastDraw} className="text-button mt-4 text-[#a43636]"><Undo2 size={16} /> Atcelt pēdējo griezienu</button>}
+            </section>
           )}
 
           {step === 'spin' && (
-            <div className="flex flex-col items-center animate-fadeIn w-full">
-              <h2 className="text-2xl font-christmas mb-2 text-xmas-gold drop-shadow-md">
-                {currentUser} griež ratu!
-              </h2>
-              <p className="text-sm opacity-80 mb-2 text-white">Pieskaries "Griezt" vai ratam, lai noskaidrotu saņēmēju.</p>
-              
-              <Wheel 
-                segments={segments} 
-                onSpinEnd={handleSpinEnd} 
-                isSpinning={isSpinning} 
-                setIsSpinning={setIsSpinning} 
-              />
-            </div>
+            <section className="flex w-full flex-col items-center" aria-labelledby="spin-heading">
+              <h2 id="spin-heading" className="display-type text-center text-3xl text-[#f3c869]">{currentUser} griež ratu</h2>
+              <p className="mt-2 text-center text-sm text-white/85">Pieskaries pogai “Griezt”, lai noskaidrotu saņēmēju.</p>
+              <Wheel segments={segments} onSpinEnd={handleSpinEnd} isSpinning={isSpinning} setIsSpinning={setIsSpinning} />
+              <button type="button" onClick={() => setStep('enterName')} disabled={isSpinning} className="text-button mt-1 text-white">Atpakaļ pie dalībniekiem</button>
+            </section>
           )}
 
           {step === 'result' && (
-            <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-2xl text-center animate-popIn mx-4">
-              <p className="text-gray-500 text-lg mb-2">{currentUser} apdāvinās:</p>
-              <h1 className="text-4xl font-bold text-xmas-red mb-6 font-christmas">{lastWinner}</h1>
-              <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 mb-6 text-sm text-gray-600">
-                <p>⚠️ {lastWinner} ir izņemts no rata nākamajiem griezieniem.</p>
+            <section className="surface-panel w-full max-w-xl p-6 text-center sm:p-8" aria-live="polite">
+              <p className="eyebrow">Tavs rezultāts</p>
+              <p className="mt-4 text-sm text-[#526258]">{currentUser} dāvinās:</p>
+              <h2 className="display-type mt-1 break-words text-4xl text-[#a43636]">{lastWinner}</h2>
+              {isSecretResults && !completed && <p className="mt-4 border-y border-[#d6ded7] py-3 text-sm text-[#526258]">Atceries šo vārdu un pēc tam paslēp rezultātu, nododot ierīci nākamajam.</p>}
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                {assignments.length > 0 && <Button onClick={undoLastDraw} variant="secondary" className="w-full !rounded-lg"><Undo2 size={17} /> Atcelt griezienu</Button>}
+                <Button onClick={handleNextTurn} className="w-full !rounded-lg">{completed ? 'Apskatīt rezultātus' : 'Paslēpt un turpināt'} <ArrowRight size={17} /></Button>
               </div>
-              <Button onClick={handleNextTurn} className="w-full">
-                Nākamais Griezējs
-              </Button>
-            </div>
+            </section>
           )}
         </>
       )}
+
+      {completed && step === 'result' && <p className="mt-4 text-center text-sm text-white/80">Nospied “Apskatīt rezultātus”, lai atklātu pilno tabulu.</p>}
+      <p className="sr-only" aria-live="polite">{copied ? 'Rezultāti nokopēti.' : ''}</p>
+      {shareUrl && <ShareDialog url={shareUrl} onClose={() => setShareUrl('')} />}
     </div>
   );
 };

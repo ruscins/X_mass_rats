@@ -12,18 +12,18 @@ export const Button: React.FC<ButtonProps> = ({
   onClick,
   ...props 
 }) => {
-  const baseStyle = "px-6 py-3 rounded-full font-bold shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100";
+  const baseStyle = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-3 font-semibold transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3c869] disabled:cursor-not-allowed disabled:opacity-50";
   
   let variantStyle = "";
   switch (variant) {
     case 'primary':
-      variantStyle = "bg-xmas-gold text-xmas-darkRed hover:bg-yellow-400 hover:shadow-xl border-2 border-yellow-200";
+      variantStyle = "border border-[#b78020] bg-[#f3c869] text-[#17392c] hover:bg-[#ffda7c]";
       break;
     case 'secondary':
-      variantStyle = "bg-white text-xmas-darkRed hover:bg-gray-100 hover:shadow-xl";
+      variantStyle = "border border-[#cbd5cc] bg-white text-[#17392c] hover:bg-[#f1f5f0]";
       break;
     case 'danger':
-      variantStyle = "bg-red-800 text-white border border-red-400 hover:bg-red-900 hover:shadow-xl";
+      variantStyle = "border border-[#982f34] bg-[#a43636] text-white hover:bg-[#8f2d31]";
       break;
   }
 

@@ -1,59 +1,77 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
-import { Plus, Trash2, Gift, Share2 } from 'lucide-react';
+import { Check, Pencil, Plus, Share2, Trash2, X } from 'lucide-react';
 import { soundEffects } from '../utils/sounds';
+import { createShareUrl } from '../utils/sharing';
+import { ShareDialog } from './ShareDialog';
 
 interface SetupPhaseProps {
   families: string[];
   setFamilies: (families: string[]) => void;
   onStartGame: () => void;
-  originalFamilies: string[];
   isReadOnly?: boolean;
+  isSecretResults: boolean;
+  setIsSecretResults: (value: boolean) => void;
 }
 
-export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, onStartGame, originalFamilies, isReadOnly = false }) => {
+export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, onStartGame, isReadOnly = false, isSecretResults, setIsSecretResults }) => {
   const [inputValue, setInputValue] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
 
   const addFamily = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (inputValue.trim()) {
-      if (!families.includes(inputValue.trim())) {
-        setFamilies([...families, inputValue.trim()]);
-        setInputValue('');
-        soundEffects.success();
-      } else {
-        soundEffects.error();
+    const names = inputValue.split(/\r?\n/).map((name) => name.trim()).filter(Boolean);
+    const knownNames = new Set(families.map((name) => name.toLocaleLowerCase('lv')));
+    const additions: string[] = [];
+
+    names.forEach((name) => {
+      const key = name.toLocaleLowerCase('lv');
+      if (!knownNames.has(key)) {
+        additions.push(name);
+        knownNames.add(key);
       }
+    });
+
+    if (additions.length > 0) {
+      setFamilies([...families, ...additions]);
+      setInputValue('');
+      setFeedback(names.length > additions.length ? 'Dublikāti izlaisti; pārējie dalībnieki pievienoti.' : `${additions.length} dalībnieki pievienoti.`);
+      soundEffects.success();
+    } else if (names.length > 0) {
+      setFeedback('Šie dalībnieki jau ir sarakstā.');
+      soundEffects.error();
     }
   };
 
+  const saveEdit = (index: number) => {
+    const updatedName = editingValue.trim();
+    const duplicate = families.some((name, currentIndex) => currentIndex !== index && name.toLocaleLowerCase('lv') === updatedName.toLocaleLowerCase('lv'));
+
+    if (!updatedName || duplicate) {
+      setFeedback(duplicate ? 'Šāds dalībnieks jau ir sarakstā.' : 'Vārds nevar būt tukšs.');
+      return;
+    }
+
+    setFamilies(families.map((name, currentIndex) => currentIndex === index ? updatedName : name));
+    setEditingIndex(null);
+    setFeedback('Dalībnieka vārds atjaunināts.');
+  };
+
   const removeFamily = (index: number) => {
-    const newFamilies = [...families];
-    newFamilies.splice(index, 1);
-    setFamilies(newFamilies);
+    setFamilies(families.filter((_, currentIndex) => currentIndex !== index));
     soundEffects.delete();
   };
 
-  const shareSetupToWhatsApp = () => {
+  const shareSetup = () => {
     try {
       soundEffects.whoosh();
-      // Safe encoding for Latvian characters (Unicode) to Base64
-      // Standard btoa fails with non-Latin1 characters
-      const jsonString = JSON.stringify(families);
-      const safeEncoded = btoa(unescape(encodeURIComponent(jsonString)));
-      
-      // Construct URL that works on GitHub Pages or locally
-      // We explicitly take the origin and pathname to ensure subdirectories (like on GitHub Pages) are included
-      const baseUrl = window.location.href.split('?')[0]; 
-      const url = `${baseUrl}?data=${safeEncoded}`;
-      
-      const text = `Hei! Esmu sagatavojis Ziemassvētku dāvanu ratu. Spied šeit, lai sāktu izlozi: ${url}`;
-      
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(whatsappUrl, '_blank');
+      setShareUrl(createShareUrl(families));
     } catch (error) {
       console.error("Error creating share link:", error);
-      alert("Neizdevās izveidot saiti. Mēģiniet vēlreiz.");
+      setFeedback('Neizdevās izveidot saiti. Mēģini vēlreiz.');
     }
   };
   
@@ -65,88 +83,103 @@ export const SetupPhase: React.FC<SetupPhaseProps> = ({ families, setFamilies, o
   };
 
   return (
-    <div className="max-w-md mx-auto w-full p-4 bg-white/10 backdrop-blur-md rounded-2xl shadow-xl border border-white/20">
-      <div className="text-center mb-6">
-        <Gift className="w-16 h-16 mx-auto text-xmas-gold mb-2" />
-        <h2 className="text-3xl font-christmas text-white mb-2">
-          {isReadOnly ? 'Pievienojies Izlozei!' : 'Sagatavošanās'}
+    <section className="surface-panel mx-auto w-full max-w-2xl p-5 sm:p-8">
+      <div className="mb-7 border-b border-[#d6ded7] pb-5">
+        <p className="eyebrow">Ziemassvētku dāvanu izloze</p>
+        <h2 className="display-type mt-2 text-3xl text-[#17392c] sm:text-4xl">
+          {isReadOnly ? 'Pievienojies izlozei' : 'Sagatavo dalībniekus'}
         </h2>
-        <p className="text-gray-200 text-sm">
-          {isReadOnly 
-            ? 'Šis saraksts ir kopīgots ar tevi. Nospied "Sākt Izlozi!" lai turpinātu.' 
-            : 'Ievadiet ģimenes vai cilvēkus, kuri piedalīsies dāvanu izlozē.'}
+        <p className="mt-2 max-w-xl text-sm leading-6 text-[#526258]">
+          {isReadOnly ? 'Kopīgots saraksts ir ielādēts šajā pārlūkā.' : 'Pievieno cilvēkus vai ģimenes. Katru dalībnieku vari rediģēt vai izņemt pirms izlozes.'}
         </p>
       </div>
 
       {!isReadOnly && (
-        <form onSubmit={addFamily} className="flex gap-2 mb-6">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ievadi vārdu/ģimeni..."
-            className="flex-1 px-4 py-3 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-xmas-gold"
-          />
-          <Button type="button" onClick={() => addFamily()} className="!px-4 !py-0 flex items-center justify-center">
-            <Plus size={24} />
-          </Button>
+        <form onSubmit={addFamily} className="mb-5">
+          <label htmlFor="participant-input" className="field-label">Dalībnieki</label>
+          <div className="flex items-end gap-2">
+            <textarea
+              id="participant-input"
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  addFamily();
+                }
+              }}
+              placeholder="Ievadi vārdu vai ielīmē sarakstu, katru dalībnieku jaunā rindā"
+              rows={2}
+              className="field-control min-h-12 flex-1 resize-y"
+            />
+            <Button type="submit" disabled={!inputValue.trim()} className="!rounded-lg !px-4 !py-3" aria-label="Pievienot dalībniekus">
+              <Plus size={20} />
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-[#68766d]">Enter pievieno, Shift + Enter ievieto jaunu rindu.</p>
         </form>
       )}
 
-      <div className="space-y-2 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-        {families.length === 0 && (
-          <div className="text-center text-white/50 py-4 italic animate-fadeIn">
-            Saraksts ir tukšs. Pievieno vismaz 2 dalībniekus.
-          </div>
+      <div className="mb-6" aria-label="Dalībnieku saraksts">
+        {families.length === 0 ? (
+          <p className="border-y border-dashed border-[#cbd5cc] py-7 text-center text-sm text-[#68766d]">Saraksts ir tukšs. Pievieno vismaz divus dalībniekus.</p>
+        ) : (
+          <ul className="max-h-[42vh] divide-y divide-[#dfe5df] overflow-y-auto border-y border-[#dfe5df]">
+            {families.map((family, index) => (
+              <li key={`${family}-${index}`} className="flex min-h-14 items-center gap-3 py-2">
+                {editingIndex === index ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={editingValue}
+                      onChange={(event) => setEditingValue(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') saveEdit(index);
+                        if (event.key === 'Escape') setEditingIndex(null);
+                      }}
+                      aria-label={`Rediģēt ${family}`}
+                      className="field-control min-w-0 flex-1"
+                    />
+                    <button type="button" onClick={() => saveEdit(index)} aria-label="Saglabāt vārdu" className="icon-button text-[#1d704e]"><Check size={18} /></button>
+                    <button type="button" onClick={() => setEditingIndex(null)} aria-label="Atcelt rediģēšanu" className="icon-button"><X size={18} /></button>
+                  </>
+                ) : (
+                  <>
+                    <span className="min-w-0 flex-1 break-words font-semibold text-[#17392c]">{family}</span>
+                    {!isReadOnly && (
+                      <>
+                        <button type="button" onClick={() => { setEditingIndex(index); setEditingValue(family); }} aria-label={`Rediģēt ${family}`} className="icon-button"><Pencil size={17} /></button>
+                        <button type="button" onClick={() => removeFamily(index)} aria-label={`Noņemt ${family}`} className="icon-button text-[#a43636]"><Trash2 size={17} /></button>
+                      </>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
-        {families.map((family, index) => (
-          <div key={index} className="flex justify-between items-center bg-white/90 p-3 rounded-lg text-xmas-darkRed animate-slideInUp hover:bg-white hover:shadow-lg transition-all duration-200 group">
-            <span className="font-semibold group-hover:scale-105 transition-transform">{family}</span>
-            {!isReadOnly && (
-              <button 
-                onClick={() => removeFamily(index)}
-                className="text-red-500 hover:text-red-700 p-1 hover:scale-125 transition-all duration-200"
-              >
-                <Trash2 size={20} />
-              </button>
-            )}
-          </div>
-        ))}
+        <p className="mt-2 min-h-5 text-sm text-[#526258]" aria-live="polite">{feedback}</p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <Button 
-          onClick={onStartGame} 
-          disabled={families.length < 2}
-          className="w-full text-lg shadow-xl"
-        >
-          Sākt Izlozi!
-        </Button>
-        
+      <label className="flex cursor-pointer items-start gap-3 border-y border-[#d6ded7] py-4 text-sm text-[#17392c]">
+        <input type="checkbox" checked={isSecretResults} onChange={(event) => setIsSecretResults(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#1d704e]" />
+        <span><strong>Slēpt iepriekšējos rezultātus</strong><span className="mt-1 block text-xs leading-5 text-[#68766d]">Katrs redzēs savu rezultātu; pilna tabula būs pieejama izlozes beigās.</span></span>
+      </label>
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <Button onClick={onStartGame} disabled={families.length < 2} className="w-full !rounded-lg sm:flex-1">Sākt izlozi <span aria-hidden="true">→</span></Button>
         {!isReadOnly && families.length >= 2 && (
-          <Button 
-            onClick={shareSetupToWhatsApp}
-            variant="secondary"
-            className="w-full flex items-center justify-center gap-2 text-sm bg-green-600 !text-white hover:!bg-green-700 !border-none"
-          >
-            <Share2 size={16} /> Kopīgot ratu WhatsApp
-          </Button>
-        )}
-        
-        {!isReadOnly && families.length > 0 && (
-          <Button 
-            onClick={clearAllFamilies}
-            variant="secondary"
-            className="w-full flex items-center justify-center gap-2 text-sm bg-red-600 !text-white hover:!bg-red-700 !border-none"
-          >
-            <Trash2 size={16} /> Izdzēst visus dalībniekus
-          </Button>
-        )}
-
-        {families.length < 2 && (
-          <p className="text-center text-xs text-red-200 mt-2">Nepieciešami vismaz 2 dalībnieki.</p>
+          <Button onClick={shareSetup} variant="secondary" className="w-full !rounded-lg sm:flex-1"><Share2 size={17} /> Kopīgot sarakstu</Button>
         )}
       </div>
-    </div>
+      <p className="mt-3 text-center text-xs leading-5 text-[#68766d]">Saraksts un izloze tiek saglabāti tikai šajā pārlūkā. Kopīgotā saite ielādē sarakstu citā ierīcē, bet nesinhronizē rezultātus.</p>
+
+      {!isReadOnly && families.length > 0 && (
+        <button type="button" onClick={clearAllFamilies} className="mt-5 flex w-full items-center justify-center gap-2 py-2 text-sm font-medium text-[#a43636] hover:underline">
+          <Trash2 size={16} /> Izdzēst visus dalībniekus
+        </button>
+      )}
+      {shareUrl && <ShareDialog url={shareUrl} onClose={() => setShareUrl('')} />}
+    </section>
   );
 };

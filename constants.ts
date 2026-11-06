@@ -9,3 +9,4 @@ export const WHEEL_COLORS = [
 
 export const STORAGE_KEY_FAMILIES = 'xmas_wheel_families';
 export const STORAGE_KEY_ASSIGNMENTS = 'xmas_wheel_assignments';
+export const STORAGE_KEY_SECRET_RESULTS = 'xmas_wheel_secret_results';

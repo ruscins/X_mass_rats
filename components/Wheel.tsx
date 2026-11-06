@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import { motion, useAnimation, useReducedMotion } from 'framer-motion';
 import { WheelSegment } from '../types';
 
 interface WheelProps {
@@ -11,6 +11,7 @@ interface WheelProps {
 
 export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, setIsSpinning }) => {
   const controls = useAnimation();
+  const prefersReducedMotion = useReducedMotion();
   const rotationRef = useRef(0);
 
   const spin = async () => {
@@ -20,7 +21,7 @@ export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, s
 
     // Random rotation between 5 and 10 full spins (1800 - 3600 degrees) plus a random segment offset
     const randomOffset = Math.random() * 360;
-    const totalRotation = 1800 + Math.random() * 1800 + randomOffset;
+    const totalRotation = prefersReducedMotion ? 360 + randomOffset : 1800 + Math.random() * 1800 + randomOffset;
     
     // The new target rotation
     const newRotation = rotationRef.current + totalRotation;
@@ -29,7 +30,7 @@ export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, s
     await controls.start({
       rotate: newRotation,
       transition: {
-        duration: 5,
+        duration: prefersReducedMotion ? 0.8 : 4.5,
         ease: [0.15, 0.25, 0.25, 1], // Cubic-bezier for realistic deceleration
       },
     });
@@ -57,7 +58,6 @@ export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, s
     // Let's assume standard start at top.
     
     const winningIndex = Math.floor(normalizedRotation / sliceAngle);
-    // Clamp
     const winner = segments[winningIndex % segments.length];
 
     onSpinEnd(winner);
@@ -92,13 +92,14 @@ export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, s
   };
 
   return (
-    <div className="relative w-[320px] h-[320px] mx-auto my-6">
+    <div className="relative mx-auto my-6 aspect-square w-[min(84vw,360px)] max-w-full">
       {/* Pointer */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-20 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-white drop-shadow-md"></div>
 
       {/* Wheel SVG */}
       <motion.div
-        className="w-full h-full rounded-full shadow-2xl border-4 border-white/20 overflow-hidden"
+        aria-hidden="true"
+        className="h-full w-full overflow-hidden rounded-full border-4 border-white/50 shadow-xl"
         animate={controls}
         initial={{ rotate: 0 }}
       >
@@ -132,8 +133,8 @@ export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, s
                   key={`text-${segment.id}`}
                   x={textPos.x}
                   y={textPos.y}
-                  fill="white"
-                  fontSize="14"
+                  fill={segment.color === '#F8B229' || segment.color === '#B8860B' ? '#17392c' : 'white'}
+                  fontSize={Math.max(9, Math.min(14, 220 / segments.length))}
                   fontWeight="bold"
                   textAnchor="middle"
                   dominantBaseline="middle"
@@ -141,6 +142,7 @@ export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, s
                   style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                 >
                   {segment.label.length > 12 ? segment.label.substring(0, 10) + '...' : segment.label}
+                  <title>{segment.label}</title>
                 </text>
               );
             })}
@@ -152,9 +154,10 @@ export const Wheel: React.FC<WheelProps> = ({ segments, onSpinEnd, isSpinning, s
       <button
         onClick={spin}
         disabled={isSpinning || segments.length === 0}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-white rounded-full shadow-[0_0_15px_rgba(0,0,0,0.3)] z-10 flex items-center justify-center border-4 border-xmas-gold hover:scale-105 transition-transform active:scale-95 disabled:opacity-80"
+        aria-label={isSpinning ? 'Rats griežas' : 'Griezt ratu'}
+        className="absolute left-1/2 top-1/2 z-10 flex h-[clamp(4rem,22vw,5.25rem)] w-[clamp(4rem,22vw,5.25rem)] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#17392c] bg-[#fffdf7] font-bold text-[#17392c] shadow-lg transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#f3c869] disabled:cursor-wait disabled:opacity-90"
       >
-        <span className="text-xmas-darkRed font-bold text-sm uppercase">Griezt</span>
+        <span className="text-xs uppercase tracking-wide">{isSpinning ? '...' : 'Griezt'}</span>
       </button>
     </div>
   );

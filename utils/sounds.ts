@@ -1,7 +1,7 @@
 // Sound effects using Web Audio API
 class SoundEffects {
   private audioContext: AudioContext | null = null;
-  private isMuted: boolean = false;
+  private isMuted: boolean = true;
   private backgroundMusicGain: GainNode | null = null;
   private isPlayingMusic: boolean = false;
   private musicIntervalId: number | null = null;
@@ -281,11 +281,8 @@ class SoundEffects {
 
   toggleMute() {
     this.isMuted = !this.isMuted;
-    if (this.isMuted) {
-      this.stopBackgroundMusic();
-    } else {
-      this.startBackgroundMusic();
-    }
+    if (this.isMuted) this.stopBackgroundMusic();
+    else void this.audioContext?.resume();
     return this.isMuted;
   }
 
