@@ -51,6 +51,7 @@ const App: React.FC = () => {
   
   const [assignments, setAssignments] = useState<Assignment[]>(readStoredAssignments);
   const [storageWarning, setStorageWarning] = useState(storageRecoveryNeeded);
+  const hasSavedGame = mode === 'setup' && !isSharedList && originalFamilies.length >= 2 && assignments.length > 0;
 
   const persistValue = (key: string, value: unknown) => {
     try {
@@ -97,10 +98,6 @@ const App: React.FC = () => {
         window.alert('Kopīgoto dalībnieku sarakstu neizdevās nolasīt.');
         window.history.replaceState({}, '', window.location.pathname);
       }
-    } else if (originalFamilies.length >= 2 && assignments.length > 0) {
-      const receiversSet = new Set(assignments.map(a => a.receiver));
-      setFamilies(originalFamilies.filter(f => !receiversSet.has(f)));
-      setMode('game');
     }
   }, []);
 
@@ -129,6 +126,18 @@ const App: React.FC = () => {
       setAssignments([]);
       setMode('game');
     }
+  };
+
+  const handleContinueGame = () => {
+    const receiversSet = new Set(assignments.map((assignment) => assignment.receiver));
+    setFamilies(originalFamilies.filter((person) => !receiversSet.has(person)));
+    setMode('game');
+  };
+
+  const handleStartFreshGame = () => {
+    setFamilies(originalFamilies);
+    setAssignments([]);
+    setIsSharedList(false);
   };
 
   const handleReset = () => {
@@ -194,7 +203,19 @@ const App: React.FC = () => {
       )}
 
       <main className="flex-1 w-full max-w-4xl mx-auto">
-        {mode === 'setup' ? (
+        {hasSavedGame ? (
+          <section className="surface-panel mx-auto w-full max-w-xl p-6 text-center sm:p-8">
+            <p className="eyebrow">Saglabāta izloze</p>
+            <h2 className="display-type mt-2 text-3xl text-[#17392c]">Turpināt iesākto?</h2>
+            <p className="mt-3 text-sm leading-6 text-[#526258]">
+              Šajā pārlūkā ir saglabāta izloze ar {assignments.length} no {originalFamilies.length} dalībniekiem.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Button onClick={handleContinueGame} className="w-full !rounded-lg sm:flex-1">Turpināt izlozi</Button>
+              <Button onClick={handleStartFreshGame} variant="secondary" className="w-full !rounded-lg sm:flex-1">Sākt no jauna</Button>
+            </div>
+          </section>
+        ) : mode === 'setup' ? (
           <SetupPhase 
             families={families} 
             setFamilies={setFamilies} 
